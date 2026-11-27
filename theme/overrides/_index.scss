@@ -120,6 +120,11 @@
     color: $text-03;
   }
 
+  // ---- This module's own settings page ---------------------------------------
+  .ns8-theme-helper {
+    color: $text-02;
+  }
+
   // ---- Images ----------------------------------------------------------------
   // App logos are drawn for white backgrounds: give them a light plate rather
   // than inverting them (decided 2026-11-27).

@@ -38,7 +38,7 @@
                 :disabled="loading.getConfiguration || loading.configureModule"
               />
             </cv-radio-group>
-            <p class="helper">{{ $t("settings.default_theme_helper") }}</p>
+            <p class="ns8-theme-helper">{{ $t("settings.default_theme_helper") }}</p>
             <NsToggle
               value="show_toggle"
               :label="$t('settings.show_toggle')"
@@ -53,7 +53,7 @@
                 $t("settings.enabled")
               }}</template>
             </NsToggle>
-            <p class="helper">{{ $t("settings.show_toggle_helper") }}</p>
+            <p class="ns8-theme-helper">{{ $t("settings.show_toggle_helper") }}</p>
             <NsInlineNotification
               v-if="loaded && !serviceActive"
               kind="warning"
@@ -297,7 +297,7 @@ export default {
 <style scoped lang="scss">
 @import "../styles/carbon-utils";
 
-.helper {
+.ns8-theme-helper {
   @include carbon--type-style("helper-text-01");
   color: $text-02;
   margin: $spacing-03 0 $spacing-07;

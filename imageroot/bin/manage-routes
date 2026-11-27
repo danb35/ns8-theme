@@ -22,6 +22,9 @@ import agent
 import agent.tasks
 
 PRIORITY = 100100  # core's cluster-admin router is 100000
+# Route changes happen on every service start and stop; keep them out of the
+# cluster-admin notification drawer, as core does for its internal tasks.
+QUIET = {"isNotificationHidden": True}
 ROUTES = {
     "cfg": "/cluster-admin/config/config.production.js",
     "css": "/cluster-admin/css/core.css",
@@ -61,6 +64,7 @@ def up():
                 "http2https": True,
                 "lets_encrypt": False,
             },
+            extra=QUIET,
         )
         if res["exit_code"] != 0:
             print(agent.SD_ERR + f"set-route {suffix} failed: {res}", file=sys.stderr)
@@ -75,6 +79,7 @@ def down():
             agent_id=traefik,
             action="delete-route",
             data={"instance": f"{module_id}-{suffix}"},
+            extra=QUIET,
         )
         if res["exit_code"] != 0:
             print(agent.SD_WARNING + f"delete-route {suffix}: {res.get('error') or res}", file=sys.stderr)
