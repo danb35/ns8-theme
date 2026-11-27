@@ -1,8 +1,32 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "configure-module input",
-    "$id": "http://schema.nethserver.org/kickstart/configure-module-input.json",
-    "description": "Configure kickstart",
-    "examples": [],
-    "type": "object"
+    "$id": "http://schema.nethserver.org/theme/configure-module-input.json",
+    "description": "Configure the cluster-admin theme",
+    "examples": [
+        {
+            "default_theme": "system",
+            "show_toggle": true
+        }
+    ],
+    "type": "object",
+    "required": [
+        "default_theme"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "default_theme": {
+            "description": "Theme for browsers that have not chosen one with the header button",
+            "type": "string",
+            "enum": [
+                "system",
+                "light",
+                "dark"
+            ]
+        },
+        "show_toggle": {
+            "description": "Show the theme button in the cluster-admin header",
+            "type": "boolean"
+        }
+    }
 }

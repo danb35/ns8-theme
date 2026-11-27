@@ -1,100 +1,105 @@
-# ns8-kickstart
+# ns8-theme
 
-This is a template module for [NethServer 8](https://github.com/NethServer/ns8-core).
-To start a new module from it:
+Dark mode for the NethServer 8 cluster-admin web interface, as a standalone
+module. Nothing in ns8-core or in any app module is patched.
 
-1. Click on [Use this template](https://github.com/NethServer/ns8-kickstart/generate).
-   Name your repo with `ns8-` prefix (e.g. `ns8-mymodule`). 
-   Do not end your module name with a number, like ~~`ns8-baaad2`~~!
+> **Status:** early development, not released. It has been exercised on one
+> test cluster (core 3.25.1) but never installed from a published image yet.
 
-1. Clone the repository, enter the cloned directory and
-   [configure your GIT identity](https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup#_your_identity)
+- **Light, Dark, or follow the system setting**, chosen per browser with a
+  button in the cluster-admin header.
+- **Covers app pages too.** The settings pages of every installed app (Mail,
+  Nextcloud, SOGo, …) are themed with no change to those apps.
+- **No flash of white.** The choice is a cookie that the server reads, so pages
+  arrive already themed.
+- **Fails safe.** If the module is stopped, broken or removed, cluster-admin is
+  exactly stock.
 
-1. Rename some references inside the repo:
-   ```
-   modulename=$(basename $(pwd) | sed 's/^ns8-//')
-   git mv imageroot/systemd/user/kickstart.service imageroot/systemd/user/${modulename}.service
-   git mv tests/kickstart.robot tests/${modulename}.robot
-   sed -i "s/kickstart/${modulename}/g" $(find .github/ .devcontainer/ * -type f)
-   git commit -a -m "Repository initialization"
-   ```
+## How it works
 
-1. Edit this `README.md` file, by replacing this section with your module
-   description
+cluster-admin loads two files that this module can take over without touching
+core: `config/config.production.js` (a small script loaded before the UI) and
+`css/core.css` (the stylesheet every app page links). The module runs nginx and
+adds two Traefik routes, at a priority just above core's, that send those two
+paths to it. nginx fetches the stock file from core's API server and appends:
 
-1. Adjust `.github/workflows` to your needs. `clean-registry.yml` might
-   need the proper list of image names to work correctly. Unused workflows
-   can be disabled from the GitHub Actions interface.
+- to `config.production.js`, a loader that adds the dark stylesheet to the
+  shell and puts the theme button in the header;
+- to `core.css`, the dark rules (or a `prefers-color-scheme` version of them,
+  or nothing), picked from the `ns8_theme` cookie.
 
-1. Commit and push your local changes
+The routes exist only while nginx is running: the service adds them once nginx
+answers and removes them when it stops.
+
+The dark stylesheet is generated at build time from NS8's own sources: the core
+UI and ns8-ui-lib SCSS are compiled twice, once with the stock colors and once
+with the dark palette, and only the declarations that differ are kept. A short
+hand-written layer covers colors that NS8 hard-codes. See
+[DESIGN.md](DESIGN.md) for the full design, the palette and its contrast
+checks, and the open questions.
 
 ## Install
 
-Instantiate the module with:
+Install it on the **leader node**, the node whose address you use for
+cluster-admin:
 
-    add-module ghcr.io/nethserver/kickstart:latest 1
+    add-module ghcr.io/danb35/theme:latest 1
 
-The output of the command will return the instance name.
-Output example:
-
-    {"module_id": "kickstart1", "image_name": "kickstart", "image_url": "ghcr.io/nethserver/kickstart:latest"}
+The theme is active immediately, following each browser's system setting.
+Reload cluster-admin to see it.
 
 ## Configure
 
-Let's assume that the kickstart instance is named `kickstart1`.
+From the app's **Settings** page in cluster-admin, or:
 
-Launch `configure-module`, by setting the following parameters:
-- `<MODULE_PARAM1_NAME>`: <MODULE_PARAM1_DESCRIPTION>
-- `<MODULE_PARAM2_NAME>`: <MODULE_PARAM2_DESCRIPTION>
-- ...
+    api-cli run module/theme1/configure-module --data '{"default_theme": "system", "show_toggle": true}'
 
-Example:
+| Field | Values | Meaning |
+|---|---|---|
+| `default_theme` | `system`, `light`, `dark` | Theme for browsers where nobody has used the header button |
+| `show_toggle` | `true`, `false` | Show the Light / Dark / System button in the header |
 
-    api-cli run module/kickstart1/configure-module --data '{}'
-
-The above command will:
-- start and configure the kickstart instance
-- (describe configuration process)
-- ...
-
-Send a test HTTP request to the kickstart backend service:
-
-    curl http://127.0.0.1/kickstart/
-
-## Smarthost setting discovery
-
-Some configuration settings, like the smarthost setup, are not part of the
-`configure-module` action input: they are discovered by looking at some
-Redis keys.  To ensure the module is always up-to-date with the
-centralized [smarthost
-setup](https://nethserver.github.io/ns8-core/core/smarthost/) every time
-kickstart starts, the command `bin/discover-smarthost` runs and refreshes
-the `state/smarthost.env` file with fresh values from Redis.
-
-Furthermore if smarthost setup is changed when kickstart is already
-running, the event handler `events/smarthost-changed/10reload_services`
-restarts the main module service.
-
-See also the `systemd/user/kickstart.service` file.
-
-This setting discovery is just an example to understand how the module is
-expected to work: it can be rewritten or discarded completely.
+A choice made with the header button is stored in that browser (the
+`ns8_theme` cookie) and wins over the default.
 
 ## Uninstall
 
-To uninstall the instance:
+    remove-module --no-preserve theme1
 
-    remove-module --no-preserve kickstart1
+Removing the module also removes its routes, so cluster-admin goes back to
+stock.
 
-## Running tests locally
+## Troubleshooting
 
-This module uses the NS8 standard testing infrastructure. For instructions on how to run the test suite locally, refer to the [Running tests locally](https://github.com/NethServer/ns8-github-actions/blob/v1/README.md#running-tests-locally) section of the ns8-github-actions README.
+**cluster-admin won't load after installing.** Remove the two routes by hand
+from any node shell, then investigate (replace `traefik1` with the node's
+Traefik instance):
 
-## UI translation
+    api-cli run module/traefik1/delete-route --data '{"instance": "theme1-cfg"}'
+    api-cli run module/traefik1/delete-route --data '{"instance": "theme1-css"}'
 
-Translated with [Weblate](https://hosted.weblate.org/projects/ns8/).
+**A screen looks wrong in dark mode.** Please open an issue with a screenshot,
+the page's address and, if you can, the element's class names from the
+browser's developer tools.
 
-To setup the translation process:
+Service logs:
 
-- add [GitHub Weblate app](https://docs.weblate.org/en/latest/admin/code-hosting.html#code-hosting-github-notifications) to your repository
-- add your repository to [hosted.weblate.org](https://hosted.weblate.org) or ask a NethServer developer to add it to ns8 Weblate project
+    journalctl _UID=$(id -u theme1)
+
+## Development
+
+- `theme/` generates the stylesheets: `npm ci && npm run build` writes
+  `theme/dist/`. `theme/tokens/dark.json` is the palette; hand-written rules are
+  in `theme/overrides/`; the header loader is `theme/loader/loader.js`.
+- `imageroot/` is the module backend: `bin/expand-config` renders the nginx
+  config, `bin/manage-routes` adds and removes the Traefik routes.
+- `ui/` is the module's settings page.
+- `build-images.sh` builds everything into one image.
+- `tests/` holds the Robot Framework integration tests.
+
+Each GitHub push builds an image tagged with the branch name; see
+`.github/workflows/publish-images.yml`.
+
+## License
+
+GPL-3.0-or-later, like NethServer 8. See [LICENSE](LICENSE).

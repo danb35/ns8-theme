@@ -1,0 +1,85 @@
+# ns8-theme nginx configuration. Rendered by bin/expand-config into
+# state/nginx.conf; @@NAME@@ placeholders are replaced there.
+# See DESIGN.md section 3.2 for why each directive is here.
+
+worker_processes 1;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+
+events {
+    worker_connections 256;
+}
+
+http {
+    access_log off;
+    server_tokens off;
+    client_body_temp_path /tmp/client_temp;
+    proxy_temp_path /tmp/proxy_temp;
+    fastcgi_temp_path /tmp/fastcgi_temp;
+    uwsgi_temp_path /tmp/uwsgi_temp;
+    scgi_temp_path /tmp/scgi_temp;
+    types {
+        text/css css;
+        text/javascript js;
+    }
+
+    map $cookie_ns8_theme $ns8_theme {
+        default @@DEFAULT_THEME@@;
+        light light;
+        dark dark;
+        system system;
+    }
+
+    server {
+        listen 127.0.0.1:@@TCP_PORT@@;
+
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_set_header Host $host;
+        proxy_set_header Accept-Encoding "";   # appended body must be plain text
+        proxy_set_header If-Modified-Since ""; # the variant depends on the cookie:
+        proxy_set_header If-None-Match "";    # never let api-server answer 304
+        proxy_hide_header Last-Modified;
+        proxy_hide_header ETag;
+        addition_types text/css text/javascript application/javascript;
+
+        gzip on;
+        gzip_comp_level 6;
+        gzip_min_length 256;
+        gzip_types text/css text/javascript application/javascript;
+        gzip_vary on;
+
+        location = /cluster-admin/css/core.css {
+            proxy_pass http://127.0.0.1:@@API_PORT@@/css/core.css;
+            add_after_body /_variant/core.css;
+            add_header Cache-Control "no-cache" always;
+            add_header Vary "Cookie" always;
+        }
+
+        location = /cluster-admin/config/config.production.js {
+            proxy_pass http://127.0.0.1:@@API_PORT@@/config/config.production.js;
+            add_after_body /_variant/loader.js;
+            add_header Cache-Control "no-cache" always;
+        }
+
+        # add_after_body takes no variables, so the subrequest picks the file.
+        location = /_variant/core.css {
+            internal;
+            root /srv;
+            try_files /_variant/core-$ns8_theme.css =404;
+        }
+
+        location = /_variant/loader.js {
+            internal;
+            root /srv;
+        }
+
+        location = /healthz {
+            return 204;
+        }
+
+        location / {
+            return 404;
+        }
+    }
+}

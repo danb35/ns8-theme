@@ -1,8 +1,36 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "get-configuration output",
-    "$id": "http://schema.nethserver.org/kickstart/get-configuration-output.json",
-    "description": "Get kickstart configuration",
-    "examples": [],
-    "type": "object"
+    "$id": "http://schema.nethserver.org/theme/get-configuration-output.json",
+    "description": "Get the cluster-admin theme configuration",
+    "examples": [
+        {
+            "default_theme": "system",
+            "show_toggle": true,
+            "service_active": true
+        }
+    ],
+    "type": "object",
+    "required": [
+        "default_theme",
+        "show_toggle",
+        "service_active"
+    ],
+    "properties": {
+        "default_theme": {
+            "type": "string",
+            "enum": [
+                "system",
+                "light",
+                "dark"
+            ]
+        },
+        "show_toggle": {
+            "type": "boolean"
+        },
+        "service_active": {
+            "description": "Whether the theme service (and so its routes) is running",
+            "type": "boolean"
+        }
+    }
 }

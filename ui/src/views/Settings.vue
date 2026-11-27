@@ -23,15 +23,44 @@
       <cv-column>
         <cv-tile light>
           <cv-form @submit.prevent="configureModule">
-            <!-- TODO remove test field and code configuration fields -->
-            <cv-text-input
-              :label="$t('settings.test_field')"
-              v-model="testField"
-              :placeholder="$t('settings.test_field')"
+            <cv-radio-group
+              :legend="$t('settings.default_theme')"
+              vertical
+              ref="default_theme"
+            >
+              <cv-radio-button
+                v-for="mode in themeModes"
+                :key="mode"
+                name="default_theme"
+                :value="mode"
+                :label="$t('settings.theme_' + mode)"
+                v-model="defaultTheme"
+                :disabled="loading.getConfiguration || loading.configureModule"
+              />
+            </cv-radio-group>
+            <p class="helper">{{ $t("settings.default_theme_helper") }}</p>
+            <NsToggle
+              value="show_toggle"
+              :label="$t('settings.show_toggle')"
+              v-model="showToggle"
               :disabled="loading.getConfiguration || loading.configureModule"
-              :invalid-message="error.testField"
-              ref="testField"
-            ></cv-text-input>
+              ref="show_toggle"
+            >
+              <template slot="text-left">{{
+                $t("settings.disabled")
+              }}</template>
+              <template slot="text-right">{{
+                $t("settings.enabled")
+              }}</template>
+            </NsToggle>
+            <p class="helper">{{ $t("settings.show_toggle_helper") }}</p>
+            <NsInlineNotification
+              v-if="loaded && !serviceActive"
+              kind="warning"
+              :title="$t('settings.service_inactive')"
+              :description="$t('settings.service_inactive_description')"
+              :showCloseButton="false"
+            />
             <cv-row v-if="error.configureModule">
               <cv-column>
                 <NsInlineNotification
@@ -85,7 +114,11 @@ export default {
         page: "settings",
       },
       urlCheckInterval: null,
-      testField: "", // TODO remove
+      themeModes: ["system", "light", "dark"],
+      defaultTheme: "system",
+      showToggle: true,
+      serviceActive: true,
+      loaded: false,
       loading: {
         getConfiguration: false,
         configureModule: false,
@@ -93,8 +126,7 @@ export default {
       error: {
         getConfiguration: "",
         configureModule: "",
-        testField: "", // TODO remove
-        // TODO add all validation error fields
+        default_theme: "",
       },
     };
   },
@@ -161,28 +193,18 @@ export default {
       this.loading.getConfiguration = false;
       const config = taskResult.output;
 
-      // TODO set configuration fields
-      // ...
-
-      // TODO remove
-      console.log("config", config);
-
-      // TODO focus first configuration field
-      this.focusElement("testField");
+      this.defaultTheme = config.default_theme;
+      this.showToggle = config.show_toggle;
+      this.serviceActive = config.service_active;
+      this.loaded = true;
     },
     validateConfigureModule() {
       this.clearErrors(this);
       let isValidationOk = true;
 
-      // TODO remove testField and validate configuration fields
-      if (!this.testField) {
-        // test field cannot be empty
-        this.error.testField = this.$t("common.required");
-
-        if (isValidationOk) {
-          this.focusElement("testField");
-          isValidationOk = false;
-        }
+      if (!this.themeModes.includes(this.defaultTheme)) {
+        this.error.default_theme = this.$t("common.required");
+        isValidationOk = false;
       }
       return isValidationOk;
     },
@@ -236,7 +258,8 @@ export default {
         this.createModuleTaskForApp(this.instanceName, {
           action: taskAction,
           data: {
-            // TODO configuration fields
+            default_theme: this.defaultTheme,
+            show_toggle: this.showToggle,
           },
           extra: {
             title: this.$t("settings.configure_instance", {
@@ -273,4 +296,10 @@ export default {
 
 <style scoped lang="scss">
 @import "../styles/carbon-utils";
+
+.helper {
+  @include carbon--type-style("helper-text-01");
+  color: $text-02;
+  margin: $spacing-03 0 $spacing-07;
+}
 </style>

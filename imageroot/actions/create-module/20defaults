@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 ns8-theme contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Default settings: follow the browser's system setting, show the header
+# button. The service starts here, so the theme works right after install.
+
+import agent
+
+agent.set_env("DEFAULT_THEME", "system")
+agent.set_env("SHOW_TOGGLE", "1")
+agent.run_helper("systemctl", "--user", "enable", "--now", "theme.service").check_returncode()

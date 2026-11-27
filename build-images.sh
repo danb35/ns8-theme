@@ -2,6 +2,7 @@
 
 #
 # Copyright (C) 2023 Nethesis S.r.l.
+# Copyright (C) 2026 ns8-theme contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
@@ -11,39 +12,59 @@ set -e
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
-repobase="${REPOBASE:-ghcr.io/nethserver}"
+repobase="${REPOBASE:-ghcr.io/danb35}"
 # Configure the image name
-reponame="kickstart"
+reponame="theme"
 # Node.js 25+ no longer ships Corepack, install it from npm
 # renovate: datasource=npm packageName=corepack
 corepack_version=0.36.0
 
+# renovate: datasource=docker depName=docker.io/nginxinc/nginx-unprivileged
+nginx_tag=1.31.7-alpine
+
 # Create a new empty container image
 container=$(buildah from scratch)
 
-# Reuse existing nodebuilder-kickstart container, to speed up builds
-if ! buildah containers --format "{{.ContainerName}}" | grep -q nodebuilder-kickstart; then
+# Reuse existing nodebuilder-theme container, to speed up builds
+if ! buildah containers --format "{{.ContainerName}}" | grep -q nodebuilder-theme; then
     echo "Pulling NodeJS runtime..."
-    buildah from --name nodebuilder-kickstart -v "${PWD}:/usr/src:Z" docker.io/library/node:26.13.1-slim
-    buildah run nodebuilder-kickstart sh -c "npm install -g corepack@${corepack_version} && corepack enable"
+    buildah from --name nodebuilder-theme -v "${PWD}:/usr/src:Z" docker.io/library/node:26.13.1-slim
+    buildah run nodebuilder-theme sh -c "npm install -g corepack@${corepack_version} && corepack enable"
 fi
 
 echo "Build static UI files with node..."
 buildah run \
     --workingdir=/usr/src/ui \
     --env="NODE_OPTIONS=--openssl-legacy-provider" \
-    nodebuilder-kickstart \
+    nodebuilder-theme \
     sh -c "yarn install && yarn build"
+
+# Generate the dark override stylesheets from the core UI and ns8-ui-lib
+# sources (see theme/build.mjs and DESIGN.md section 5)
+# renovate: datasource=github-tags depName=NethServer/ns8-core
+ns8_core_ref=3.25.1
+echo "Build theme stylesheets with node..."
+buildah run \
+    --workingdir=/usr/src/theme \
+    --env="NS8_CORE_REF=${ns8_core_ref}" \
+    nodebuilder-theme \
+    sh -c "npm ci --no-audit --no-fund && npm run build"
 
 # Add imageroot directory to the container image
 buildah add "${container}" imageroot /imageroot
 buildah add "${container}" ui/dist /ui
+# Theme files: nginx appends them (imageroot/theme); the shell loads dark.css
+# from the module's UI directory, which core serves under /cluster-admin/apps/
+buildah add "${container}" theme/dist /imageroot/theme
+buildah add "${container}" theme/dist/dark.css /ui/theme/dark.css
 # Setup the entrypoint, ask to reserve one TCP port with the label and set a rootless container
 buildah config --entrypoint=/ \
     --label="org.nethserver.authorizations=traefik@node:routeadm" \
     --label="org.nethserver.tcp-ports-demand=1" \
     --label="org.nethserver.rootfull=0" \
-    --label="org.nethserver.images=docker.io/jmalloc/echo-server:latest" \
+    --label="org.nethserver.max-per-node=1" \
+    --label="org.nethserver.flags=no_data_backup" \
+    --label="org.nethserver.images=docker.io/nginxinc/nginx-unprivileged:${nginx_tag}" \
     "${container}"
 # Commit the image
 buildah commit "${container}" "${repobase}/${reponame}"

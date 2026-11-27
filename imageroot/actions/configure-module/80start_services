@@ -1,12 +1,13 @@
 #!/bin/bash
 
 #
-# Copyright (C) 2023 Nethesis S.r.l.
+# Copyright (C) 2026 ns8-theme contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-# If the control reaches this step, the service can be enabled and started
+# Restart re-renders nginx.conf and the loader with the new settings. The
+# routes are removed while nginx is down and re-added once it answers.
 
-touch smarthost.env
-
-systemctl --user enable --now kickstart.service
+exec 1>&2
+systemctl --user enable theme.service
+systemctl --user restart theme.service

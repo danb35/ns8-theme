@@ -1,0 +1,142 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Hand-written dark overrides (DESIGN.md section 5, layers L2b-L5).
+// Compiled with the dark token variables prepended, so Carbon token names
+// ($ui-01, $text-02, ...) and the ns-* extras from tokens/dark.json resolve to
+// dark values. Everything is nested under :root:root to match the generated
+// layer's specificity.
+
+:root:root {
+  color-scheme: dark;
+
+  // ---- Surfaces -----------------------------------------------------------
+  body,
+  #core,
+  .bx--content,
+  .main-content {
+    background-color: $ui-background;
+    color: $text-01;
+  }
+
+  // Tiles: on g100 the layer step alone reads flat; NS8 is tile-heavy.
+  .bx--tile {
+    border: 1px solid $ns-tile-border;
+  }
+
+  // Elevation: menus, lists and modals sit on layer 2 with a real shadow.
+  .bx--overflow-menu-options,
+  .bx--list-box__menu,
+  .bx--dropdown-list,
+  .bx--modal-container,
+  .bx--tooltip,
+  .bx--date-picker__calendar,
+  .flatpickr-calendar {
+    background-color: $ui-03;
+    box-shadow: $ns-shadow;
+  }
+
+  // ---- Tags ------------------------------------------------------------------
+  // Carbon v10 tag colors are fixed per color, not theme tokens. These are
+  // the g100 tag colors, with blue moved to the brand cyan.
+  $tags: (
+    "red": (#750e13, #ffd7d9),
+    "magenta": (#740937, #ffd6e8),
+    "purple": (#491d8b, #e8daff),
+    "blue": (#003a52, #7cdcff),
+    "cyan": (#003a6d, #bae6ff),
+    "teal": (#004144, #9ef0f0),
+    "green": (#044317, #a7f0ba),
+    "gray": (#393939, #e0e0e0),
+    "cool-gray": (#343a3f, #dde1e6),
+    "warm-gray": (#3c3838, #e5e0df),
+    "high-contrast": (#f4f4f4, #161616),
+  );
+  @each $name, $c in $tags {
+    .bx--tag--#{$name} {
+      background-color: nth($c, 1);
+      color: nth($c, 2);
+    }
+  }
+  .bx--tag:not([class*="bx--tag--"]) {
+    background-color: #393939;
+    color: #e0e0e0;
+  }
+
+  // ---- Core: hard-coded colors (_core.scss) --------------------------------
+  .ns-warning {
+    color: $ns-warning-color !important;
+    fill: $ns-warning-color !important;
+  }
+  .ns-disabled {
+    color: $ns-muted !important;
+    fill: $ns-muted !important;
+  }
+
+  // ---- Core: hard-coded colors in components --------------------------------
+  .challenge-error,
+  .validation-failed-invalid-message {
+    color: $support-01;
+  }
+  .bx--file-container.invalid,
+  .file-uploader-error .bx--file__drop-container {
+    outline-color: $support-01;
+    border-color: $support-01;
+  }
+  // Backup modals put the selected file on a white chip.
+  .bx--file__selected-file {
+    background-color: $ui-03;
+  }
+  // Task error tree lines were black.
+  .task-tree-hierarchy li,
+  .task-tree li {
+    border-left-color: $ui-04;
+  }
+  .helper-text {
+    color: $text-02;
+  }
+
+  // ---- ns8-ui-lib: hard-coded colors ------------------------------------------
+  .requirement {
+    background-color: $ui-04;
+  }
+  .requirement-light {
+    background-color: $ui-03;
+  }
+  .requirement-ok {
+    background-color: $support-02;
+  }
+  .requirement-disabled {
+    color: $text-03;
+    background-color: $ui-03;
+  }
+  .ns-time-picker .time-picker-field .clear-btn {
+    color: $text-02;
+  }
+  .ns-byte-slider .wrapper[data-invalid] ~ .bx--form-requirement,
+  .ns-slider .wrapper[data-invalid] ~ .bx--form-requirement {
+    color: $support-01;
+  }
+  .disabled-tile {
+    color: $text-03;
+  }
+
+  // ---- Images ----------------------------------------------------------------
+  // App logos are drawn for white backgrounds: give them a light plate rather
+  // than inverting them (decided 2026-11-27).
+  .app-logo,
+  .module-logo,
+  .logo-container img,
+  .app-list-logo img,
+  img[src*="/logo"] {
+    background-color: $ns-logo-plate;
+    border-radius: 4px;
+    padding: 2px;
+  }
+
+  // Lottie empty-state animations (ghost, gears, rocket) are drawn for light
+  // backgrounds. Recolor by inverting the drawing and turning hues back.
+  .lottie-container svg,
+  .empty-state svg[preserveAspectRatio] {
+    filter: invert(0.88) hue-rotate(180deg);
+  }
+}

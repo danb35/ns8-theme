@@ -1,0 +1,43 @@
+#
+# Copyright (C) 2026 ns8-theme contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# nginx that serves cluster-admin's config.production.js and core.css with
+# the theme appended. The two Traefik routes that send those paths here exist
+# only while this unit is running (ExecStartPost / ExecStopPost), so a stopped
+# or failed service leaves cluster-admin exactly as stock. See DESIGN.md 3.4.
+#
+[Unit]
+Description=ns8-theme cluster-admin theme injector
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%E/state/environment
+WorkingDirectory=%E/state
+Restart=always
+RestartSec=5
+TimeoutStartSec=180
+ExecStartPre=/bin/rm -f %t/theme.pid %t/theme.ctr-id
+ExecStartPre=runagent expand-config
+ExecStart=/usr/bin/podman run \
+    --detach \
+    --conmon-pidfile=%t/theme.pid \
+    --cidfile=%t/theme.ctr-id \
+    --cgroups=no-conmon \
+    --replace --name=%N \
+    --network=host \
+    --volume=%E/state/nginx.conf:/etc/nginx/nginx.conf:ro,Z \
+    --volume=%E/state/variant:/srv/_variant:ro,Z \
+    ${NGINX_UNPRIVILEGED_IMAGE}
+ExecStartPost=runagent manage-routes up
+ExecStop=-runagent manage-routes down
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/theme.ctr-id -t 10
+ExecStopPost=-runagent manage-routes down
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/theme.ctr-id
+PIDFile=%t/theme.pid
+Type=forking
+
+[Install]
+WantedBy=default.target
