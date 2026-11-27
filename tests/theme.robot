@@ -144,6 +144,20 @@ Dark theme in the browser
     Wait For Elements State    id=ns8-theme-toggle    visible    timeout=10s
     Body background should be    body    ${DARK_BG}
     Shot    status    h2 >> text="Cluster status"    1._Dark_-_cluster_status
+    # Low-contrast notifications kept a light tinted background with light
+    # text in 0.1.0; every kind must have a dark body (DESIGN.md 4.3).
+    ${bgs} =    Evaluate JavaScript    ${None}
+    ...    () => ['warning', 'error', 'success', 'info'].map((k) => {
+    ...        const n = document.createElement('div');
+    ...        n.className = 'bx--inline-notification bx--inline-notification--' + k + ' bx--inline-notification--low-contrast';
+    ...        document.body.appendChild(n);
+    ...        const bg = getComputedStyle(n).backgroundColor;
+    ...        n.remove();
+    ...        return bg;
+    ...    })
+    FOR    ${bg}    IN    @{bgs}
+        Should Be Equal    ${bg}    rgb(38, 38, 38)    low-contrast notification background is ${bg}
+    END
     Shot    software-center    h2 >> text="Software center"    2._Dark_-_software_center
     Shot    nodes    h2 >> text="Nodes"    3._Dark_-_nodes
     Shot    settings    h2 >> text="Settings"    4._Dark_-_settings
