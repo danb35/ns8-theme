@@ -29,6 +29,14 @@ const PREFIX = ":root:root"; // +2 classes: beats Carbon's flat selectors and Vu
 // Parts of the shell that stock NS8 already draws dark (header, side menu,
 // drawers, toasts, log viewer). Their light-theme rules use inverse tokens on
 // purpose; regenerating them with dark tokens would turn them light.
+// Core components stock NS8 draws dark. Their style blocks use dark-on-light
+// token pairs on purpose (AppDrawer.vue even styles every content switcher,
+// the Software Center tabs included, this way): leave all their rules stock.
+const SKIP_FILES = new Set([
+  "components/shell/AppDrawer.vue",
+  "components/shell/NotificationDrawer.vue",
+  "components/shell/GlobalSearch.vue",
+]);
 // Prefix match on purpose: .bx--side-nav also covers .bx--side-nav__link etc.
 const SKIP_RE = /\.(?:bx--header|bx--side-nav|core-side-nav|app-side-nav|app-side-menu|app-drawer|notification-drawer|global-search|bx--toast-notification|ns-toast|log-output|logs-output)/;
 // Carbon's regular ("high contrast") inline notifications are dark in the
@@ -258,6 +266,7 @@ async function main() {
     for (const lightFile of walk(v.light)) {
       if (!lightFile.endsWith(".vue")) continue;
       const rel = path.relative(v.light, lightFile);
+      if (name === "core" && SKIP_FILES.has(rel)) continue;
       const darkFile = path.join(v.dark, rel);
       const lb = styleBlocks(lightFile);
       const db = styleBlocks(darkFile);
