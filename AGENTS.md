@@ -39,3 +39,12 @@ external services, how to run the tests, known pitfalls.
   run `bin/expand-config` with the agent's Python
   (`/usr/local/agent/pyenv/bin/python3`) and fake `AGENT_*` variables, start
   nginx-unprivileged by hand, and add the routes with `api-cli`.
+- CI: "Test module" runs on `workflow_run`, which always uses the workflow
+  file from `master`. A change to `.github/workflows/test-module.yml` on a
+  branch (such as `ui_tests_strategy`) only takes effect after merging; until
+  then start it by hand: `gh workflow run test-module.yml --ref <branch> -f
+  debug_shell=false`.
+- CI: each push starts a new QEMU run that cancels the previous one for the
+  same branch and distro. Push once and let the 5-7 minute run finish.
+- The Robot suite's `ui` tests take the dark/light screenshots; the shared
+  workflow posts them on the pull request.
