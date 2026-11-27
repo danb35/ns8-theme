@@ -4,6 +4,10 @@ Library    SSHLibrary
 *** Variables ***
 ${module_id}    ${EMPTY}
 ${URL}          https://127.0.0.1/cluster-admin
+${ADMIN_USER}    admin
+${ADMIN_PASSWORD}    Nethesis,1234
+${SHOTS}        ${OUTPUT DIR}/browser/screenshot
+${DARK_BG}      rgb(22, 22, 22)
 
 *** Keywords ***
 Get core.css size with cookie
@@ -19,6 +23,30 @@ Routes count should be
     [Arguments]    ${expected}
     ${n} =    Routes count
     Should Be Equal As Integers    ${n}    ${expected}
+
+Open cluster-admin
+    [Documentation]    New browser context with the OS color scheme set, logged in.
+    [Arguments]    ${scheme}
+    New Context    ignoreHTTPSErrors=True    colorScheme=${scheme}    viewport={'width': 1440, 'height': 900}
+    New Page    https://${NODE_ADDR}/cluster-admin/
+    Fill Text    text="Username"    ${ADMIN_USER}
+    Click    button >> text="Continue"
+    Fill Text    text="Password"    ${ADMIN_PASSWORD}
+    Click    button >> text="Log in"
+    Wait For Elements State    css=#main-content    visible    timeout=20s
+
+Shot
+    [Documentation]    Open a cluster-admin page, wait for it, save a numbered screenshot.
+    [Arguments]    ${path}    ${ready}    ${name}
+    Go To    https://${NODE_ADDR}/cluster-admin/#/${path}
+    Wait For Elements State    ${ready}    visible    timeout=20s
+    Sleep    3s
+    Take Screenshot    filename=${SHOTS}/${name}.png
+
+Body background should be
+    [Arguments]    ${selector}    ${expected}
+    ${bg} =    Evaluate JavaScript    ${selector}    (el) => getComputedStyle(el).backgroundColor
+    Should Be Equal    ${bg}    ${expected}
 
 *** Test Cases ***
 Record the stock core.css size
@@ -51,6 +79,56 @@ core.css variants follow the cookie
     Should Be True    ${dark} > ${stock_size}
     ${system} =    Execute Command    curl -sk ${URL}/css/core.css | tail -c 200000 | grep -c 'prefers-color-scheme: dark'
     Should Be True    ${system} >= 1
+
+Dark theme in the browser
+    [Documentation]    Default "system" theme with the OS in dark mode: shell and
+    ...    app pages are dark, the header button is present.
+    [Tags]    ui
+    Import Library    Browser
+    New Browser    chromium    headless=True
+    Open cluster-admin    dark
+    Get Attribute    html    data-ns8-theme    ==    system
+    Wait For Elements State    id=ns8-theme-toggle    visible    timeout=10s
+    Body background should be    body    ${DARK_BG}
+    Shot    status    text="Cluster status"    1._Dark_-_cluster_status
+    Shot    software-center    text="Software center"    2._Dark_-_software_center
+    Shot    nodes    text="Nodes"    3._Dark_-_nodes
+    Shot    settings    text="Settings"    4._Dark_-_settings
+    Shot    apps/${module_id}?page=status    iframe >>> h2 >> text="Status"    5._Dark_-_app_status
+    Body background should be    iframe >>> body    ${DARK_BG}
+    Shot    apps/${module_id}?page=settings    iframe >>> h2 >> text="Settings"    6._Dark_-_app_settings
+    Close Context
+
+Light theme in the browser
+    [Documentation]    Same pages with the OS in light mode: stock look.
+    [Tags]    ui
+    Open cluster-admin    light
+    Get Attribute    html    data-ns8-theme    ==    system
+    ${bg} =    Evaluate JavaScript    body    (el) => getComputedStyle(el).backgroundColor
+    Should Not Be Equal    ${bg}    ${DARK_BG}
+    Shot    status    text="Cluster status"    7._Light_-_cluster_status
+    Shot    apps/${module_id}?page=settings    iframe >>> h2 >> text="Settings"    8._Light_-_app_settings
+    Close Context
+
+Header button switches the theme
+    [Documentation]    From System, the button goes to Light, then Dark; the choice
+    ...    is a cookie that survives a reload and reaches the app iframe.
+    [Tags]    ui
+    Open cluster-admin    light
+    Click    id=ns8-theme-toggle
+    Get Attribute    html    data-ns8-theme    ==    light
+    Click    id=ns8-theme-toggle
+    Get Attribute    html    data-ns8-theme    ==    dark
+    ${cookie} =    Get Cookie    ns8_theme
+    Should Be Equal    ${cookie.value}    dark
+    Go To    https://${NODE_ADDR}/cluster-admin/#/apps/${module_id}?page=status
+    Reload
+    Wait For Elements State    iframe >>> h2 >> text="Status"    visible    timeout=20s
+    Get Attribute    html    data-ns8-theme    ==    dark
+    Body background should be    iframe >>> body    ${DARK_BG}
+    Sleep    3s
+    Take Screenshot    filename=${SHOTS}/9._Dark_by_button_with_OS_in_light_mode.png
+    Close Browser
 
 Configure the default theme
     ${out}  ${rc} =    Execute Command    api-cli run module/${module_id}/configure-module --data '{"default_theme": "dark", "show_toggle": false}'
