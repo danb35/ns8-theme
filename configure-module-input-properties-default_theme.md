@@ -1,0 +1,25 @@
+# Untitled string in configure-module input Schema
+
+```txt
+http://schema.nethserver.org/theme/configure-module-input.json#/properties/default_theme
+```
+
+Theme for browsers that have not chosen one with the header button
+
+| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                |
+| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :---------------------------------------------------------------------------------------- |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [configure-module-input.json\*](theme/configure-module-input.json "open original schema") |
+
+## default_theme Type
+
+`string`
+
+## default_theme Constraints
+
+**enum**: the value of this property must be equal to one of the following values:
+
+| Value      | Explanation |    |    |
+| :--------- | :---------- | :- | :- |
+| `"system"` |             |
+| `"light"`  |             |
+| `"dark"`   |             |
