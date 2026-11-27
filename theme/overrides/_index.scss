@@ -65,6 +65,37 @@
     color: #e0e0e0;
   }
 
+  // ---- Inline notifications ------------------------------------------------
+  // Low-contrast notifications have a tinted light background in the light
+  // theme (#fdf6dd for warnings) that Carbon's dark theme leaves alone, while
+  // their text turns light. Give every kind a dark body: the colored left bar
+  // and outline still say which kind it is (DESIGN.md 4.3).
+  .bx--inline-notification--low-contrast,
+  .bx--actionable-notification--low-contrast {
+    background: $ui-01;
+    color: $text-01;
+
+    .bx--inline-notification__title,
+    .bx--inline-notification__subtitle,
+    .bx--actionable-notification__title,
+    .bx--actionable-notification__subtitle {
+      color: $text-01;
+    }
+    .bx--inline-notification__close-icon,
+    .bx--actionable-notification__close-icon {
+      fill: $icon-01;
+    }
+    a,
+    .bx--btn--ghost {
+      color: $link-01;
+    }
+  }
+  // Inside a tile the body would match the tile: one step lighter there.
+  .bx--tile .bx--inline-notification--low-contrast,
+  .bx--modal-container .bx--inline-notification--low-contrast {
+    background: $ui-03;
+  }
+
   // ---- Core: hard-coded colors (_core.scss) --------------------------------
   .ns-warning {
     color: $ns-warning-color !important;

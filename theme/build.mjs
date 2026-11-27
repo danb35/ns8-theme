@@ -30,7 +30,17 @@ const PREFIX = ":root:root"; // +2 classes: beats Carbon's flat selectors and Vu
 // drawers, toasts, log viewer). Their light-theme rules use inverse tokens on
 // purpose; regenerating them with dark tokens would turn them light.
 // Prefix match on purpose: .bx--side-nav also covers .bx--side-nav__link etc.
-const SKIP = /\.(?:bx--header|bx--side-nav|core-side-nav|app-side-nav|app-side-menu|app-drawer|notification-drawer|global-search|bx--toast-notification|ns-toast|log-output|logs-output)/;
+const SKIP_RE = /\.(?:bx--header|bx--side-nav|core-side-nav|app-side-nav|app-side-menu|app-drawer|notification-drawer|global-search|bx--toast-notification|ns-toast|log-output|logs-output)/;
+// Carbon's regular ("high contrast") inline notifications are dark in the
+// light theme and its dark theme inverts them to white: keep them stock too.
+// Their low-contrast variant is light in the light theme; the hand-written
+// layer gives it a dark body (DESIGN.md 4.3).
+const SKIP = {
+  test: (sel) =>
+    SKIP_RE.test(sel) ||
+    (/\.bx--(?:inline|actionable)-notification/.test(sel) &&
+      !/low-contrast/.test(sel.replace(/:not\([^)]*\)/g, ""))),
+};
 
 const log = (...a) => console.error("[theme]", ...a);
 
