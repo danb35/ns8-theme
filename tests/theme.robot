@@ -143,10 +143,10 @@ Dark theme in the browser
     Get Attribute    html    data-ns8-theme    ==    system
     Wait For Elements State    id=ns8-theme-toggle    visible    timeout=10s
     Body background should be    body    ${DARK_BG}
-    Shot    status    text="Cluster status"    1._Dark_-_cluster_status
-    Shot    software-center    text="Software center"    2._Dark_-_software_center
-    Shot    nodes    text="Nodes"    3._Dark_-_nodes
-    Shot    settings    text="Settings"    4._Dark_-_settings
+    Shot    status    h2 >> text="Cluster status"    1._Dark_-_cluster_status
+    Shot    software-center    h2 >> text="Software center"    2._Dark_-_software_center
+    Shot    nodes    h2 >> text="Nodes"    3._Dark_-_nodes
+    Shot    settings    h2 >> text="Settings"    4._Dark_-_settings
     Shot    apps/${module_id}?page=status    iframe >>> h2 >> text="Status"    5._Dark_-_app_status
     Body background should be    iframe >>> body    ${DARK_BG}
     Shot    apps/${module_id}?page=settings    iframe >>> h2 >> text="Settings"    6._Dark_-_app_settings
@@ -159,7 +159,7 @@ Light theme in the browser
     Get Attribute    html    data-ns8-theme    ==    system
     ${bg} =    Evaluate JavaScript    body    (el) => getComputedStyle(el).backgroundColor
     Should Not Be Equal    ${bg}    ${DARK_BG}
-    Shot    status    text="Cluster status"    7._Light_-_cluster_status
+    Shot    status    h2 >> text="Cluster status"    7._Light_-_cluster_status
     Shot    apps/${module_id}?page=settings    iframe >>> h2 >> text="Settings"    8._Light_-_app_settings
     Close Context
 
