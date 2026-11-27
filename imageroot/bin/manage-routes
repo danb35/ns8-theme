@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 ns8-theme contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# manage-routes up|down [--if-up]
+#
+# Add or remove the two Traefik routes that send cluster-admin's
+# config.production.js and core.css to this module's nginx. "up" waits for
+# nginx to answer first, so the routes never point at a dead backend.
+# Route instance names start with MODULE_ID, so core removes them with the
+# module too. See DESIGN.md sections 3.1 and 3.4.
+
+import os
+import sys
+import time
+import urllib.request
+
+import agent
+import agent.tasks
+
+PRIORITY = 100100  # core's cluster-admin router is 100000
+# Route changes happen on every service start and stop; keep them out of the
+# cluster-admin notification drawer, as core does for its internal tasks.
+QUIET = {"isNotificationHidden": True}
+ROUTES = {
+    "cfg": "/cluster-admin/config/config.production.js",
+    "css": "/cluster-admin/css/core.css",
+}
+
+# Runtime marker (tmpfs, gone after reboot): set while the routes are up, so
+# ExecStopPost can skip the removal ExecStop already did on a clean stop but
+# still clean up after a crash, when ExecStop does not run.
+MARKER = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/nonexistent"), "ns8-theme.routes")
+
+module_id = os.environ["MODULE_ID"]
+port = os.environ["TCP_PORT"]
+traefik = agent.resolve_agent_id("traefik@node")
+
+
+def wait_healthy(timeout=30):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=2) as r:
+                if r.status == 204:
+                    return True
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return False
+
+
+def up():
+    if not wait_healthy():
+        print(agent.SD_ERR + "nginx did not become healthy; not adding routes", file=sys.stderr)
+        sys.exit(1)
+    for suffix, path in ROUTES.items():
+        res = agent.tasks.run(
+            agent_id=traefik,
+            action="set-route",
+            data={
+                "instance": f"{module_id}-{suffix}",
+                "url": f"http://127.0.0.1:{port}",
+                "path": path,
+                "priority": PRIORITY,
+                "http2https": True,
+                "lets_encrypt": False,
+            },
+            extra=QUIET,
+        )
+        if res["exit_code"] != 0:
+            print(agent.SD_ERR + f"set-route {suffix} failed: {res}", file=sys.stderr)
+            down()
+            sys.exit(1)
+    try:
+        open(MARKER, "w").close()
+    except OSError:
+        pass
+    print(f"Routes active for {', '.join(ROUTES.values())}", file=sys.stderr)
+
+
+def down(if_up=False):
+    if if_up and not os.path.exists(MARKER) and os.path.isdir(os.path.dirname(MARKER)):
+        return
+    for suffix in ROUTES:
+        res = agent.tasks.run(
+            agent_id=traefik,
+            action="delete-route",
+            data={"instance": f"{module_id}-{suffix}"},
+            extra=QUIET,
+        )
+        if res["exit_code"] != 0:
+            print(agent.SD_WARNING + f"delete-route {suffix}: {res.get('error') or res}", file=sys.stderr)
+    try:
+        os.unlink(MARKER)
+    except OSError:
+        pass
+    print("Routes removed; cluster-admin is stock", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd == "up":
+        up()
+    elif cmd == "down":
+        down(if_up="--if-up" in sys.argv[2:])
+    else:
+        print("usage: manage-routes up|down [--if-up]", file=sys.stderr)
+        sys.exit(2)

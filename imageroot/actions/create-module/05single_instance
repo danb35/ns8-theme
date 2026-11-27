@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 ns8-theme contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Refuse a second instance on the same node. Two instances would add
+# competing routes for the same cluster-admin paths. The image's
+# org.nethserver.max-per-node=1 label is enforced only by the Software
+# Center, not by "add-module <image URL>", so check here too.
+
+import os
+import sys
+
+import agent
+
+
+def repo(url):
+    """Image repository without tag or digest: ghcr.io/danb35/theme"""
+    url = url.split("@", 1)[0]
+    head, _, last = url.rpartition("/")
+    return (head + "/" if head else "") + last.split(":", 1)[0]
+
+
+module_id = os.environ["MODULE_ID"]
+node_id = os.environ["NODE_ID"]
+mine = repo(os.environ.get("IMAGE_URL", ""))
+
+rdb = agent.redis_connect(use_replica=True)
+for other, other_node in rdb.hgetall("cluster/module_node").items():
+    if other == module_id or other_node != node_id:
+        continue
+    other_url = rdb.hget(f"module/{other}/environment", "IMAGE_URL") or ""
+    if repo(other_url) == mine:
+        print(
+            agent.SD_ERR
+            + f"{other} already themes cluster-admin on node {node_id}. "
+            + f"Only one instance per node is supported: remove {module_id} "
+            + f"(remove-module --no-preserve {module_id}).",
+            file=sys.stderr,
+        )
+        sys.exit(1)

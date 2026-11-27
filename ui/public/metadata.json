@@ -1,19 +1,21 @@
 {
-  "name": "kickstart",
+  "name": "theme",
   "description": {
-    "en": "My kickstart module"
+    "en": "Dark mode and theme switcher for the cluster-admin web interface"
   },
-  "categories": [],
+  "categories": [
+    "systemadministration"
+  ],
   "authors": [
     {
-      "name": "Name Surname",
-      "email": "author@yourmail.org"
+      "name": "danb35",
+      "email": ""
     }
   ],
   "docs": {
-    "documentation_url": "https://docs.kickstart.com/",
-    "bug_url": "https://github.com/NethServer/dev",
-    "code_url": "https://github.com/author/ns8-kickstart"
+    "documentation_url": "https://github.com/danb35/ns8-theme#readme",
+    "bug_url": "https://github.com/danb35/ns8-theme/issues",
+    "code_url": "https://github.com/danb35/ns8-theme"
   },
-  "source": "ghcr.io/nethserver/kickstart"
+  "source": "ghcr.io/danb35/theme"
 }

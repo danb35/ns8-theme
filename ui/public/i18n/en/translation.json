@@ -1,57 +1,67 @@
 {
-    "common": {
-        "required": "Required",
-        "work_in_progress": "Work in progress",
-        "processing": "Processing..."
-    },
-    "status": {
-        "title": "Status",
-        "app_instance": "Application instance",
-        "services": "Service | Services",
-        "app_images": "Application image | Application images",
-        "app_volumes": "Application volume | Application volumes",
-        "installation_node": "Installation node",
-        "node": "Node",
-        "name": "Name",
-        "size": "Size",
-        "created": "Created",
-        "mount": "Mount",
-        "no_services": "No services",
-        "no_images": "No images",
-        "no_volumes": "No volumes"
-    },
-    "settings": {
-        "title": "Settings",
-        "configure_instance": "Configure {instance}",
-        "save": "Save",
-        "test_field": "Test field"
-    },
-    "about": {
-        "title": "About"
-    },
-    "task": {
-        "cannot_create_task": "Cannot create task {action}"
-    },
-    "action": {
-        "get-status": "Get status",
-        "get-configuration": "Get configuration",
-        "configure-module": "Configure module",
-        "get-module-info": "Get module info",
-        "get-name": "Get name",
-        "list-backup-repositories": "List backup repositories",
-        "list-backups": "List backups",
-        "list-installed-modules": "List installed modules"
-    },
-    "error": {
-        "error": "Error",
-        "generic_error": "Something went wrong",
-        "validation_error": "Validation error",
-        "network_error": "Network error",
-        "network_timeout": "Network timeout",
-        "401": "Invalid authentication",
-        "403": "Operation not authorized",
-        "404": "Resource not found",
-        "cannot_retrieve_module_info": "Cannot retrieve module info",
-        "cannot_retrieve_installed_modules": "Cannot retrieve installed modules"
-    }
+  "common": {
+    "required": "Required",
+    "work_in_progress": "Work in progress",
+    "processing": "Processing..."
+  },
+  "status": {
+    "title": "Status",
+    "app_instance": "Application instance",
+    "services": "Service | Services",
+    "app_images": "Application image | Application images",
+    "app_volumes": "Application volume | Application volumes",
+    "installation_node": "Installation node",
+    "node": "Node",
+    "name": "Name",
+    "size": "Size",
+    "created": "Created",
+    "mount": "Mount",
+    "no_services": "No services",
+    "no_images": "No images",
+    "no_volumes": "No volumes"
+  },
+  "settings": {
+    "title": "Settings",
+    "configure_instance": "Configure {instance}",
+    "save": "Save",
+    "default_theme": "Default theme",
+    "theme_system": "Follow the system setting",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "default_theme_helper": "Used in browsers where nobody has picked a theme with the header button. A choice made with the button is kept in that browser.",
+    "show_toggle": "Theme button in the header",
+    "enabled": "Shown",
+    "disabled": "Hidden",
+    "show_toggle_helper": "Adds a Light / Dark / System button next to the notifications icon.",
+    "service_inactive": "The theme service is not running",
+    "service_inactive_description": "cluster-admin is showing the stock theme. Save the settings to start it again, or check the module's logs."
+  },
+  "about": {
+    "title": "About"
+  },
+  "task": {
+    "cannot_create_task": "Cannot create task {action}"
+  },
+  "action": {
+    "get-status": "Get status",
+    "get-configuration": "Get configuration",
+    "configure-module": "Configure module",
+    "get-module-info": "Get module info",
+    "get-name": "Get name",
+    "list-backup-repositories": "List backup repositories",
+    "list-backups": "List backups",
+    "list-installed-modules": "List installed modules"
+  },
+  "error": {
+    "error": "Error",
+    "generic_error": "Something went wrong",
+    "validation_error": "Validation error",
+    "network_error": "Network error",
+    "network_timeout": "Network timeout",
+    "401": "Invalid authentication",
+    "403": "Operation not authorized",
+    "404": "Resource not found",
+    "cannot_retrieve_module_info": "Cannot retrieve module info",
+    "cannot_retrieve_installed_modules": "Cannot retrieve installed modules"
+  }
 }

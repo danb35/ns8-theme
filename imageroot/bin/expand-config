@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 ns8-theme contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Render state/nginx.conf and the state/variant/ files nginx appends to
+# cluster-admin's core.css and config.production.js. Runs as ExecStartPre.
+
+import hashlib
+import json
+import os
+import shutil
+import sys
+
+import agent
+
+install_dir = os.environ.get("AGENT_INSTALL_DIR", os.path.expanduser("~/.config"))
+state_dir = os.environ.get("AGENT_STATE_DIR", os.path.join(install_dir, "state"))
+module_id = os.environ["MODULE_ID"]
+
+default_theme = os.environ.get("DEFAULT_THEME", "system")
+if default_theme not in ("system", "light", "dark"):
+    print(agent.SD_WARNING + f"Invalid DEFAULT_THEME {default_theme!r}, using system", file=sys.stderr)
+    default_theme = "system"
+show_toggle = os.environ.get("SHOW_TOGGLE", "1") != "0"
+tcp_port = os.environ["TCP_PORT"]
+api_port = os.environ.get("API_SERVER_PORT", "9311")
+
+theme_src = os.path.join(install_dir, "theme")
+
+# nginx.conf
+with open(os.path.join(install_dir, "nginx", "nginx.conf.in")) as f:
+    conf = f.read()
+for k, v in {"DEFAULT_THEME": default_theme, "TCP_PORT": tcp_port, "API_PORT": api_port}.items():
+    conf = conf.replace(f"@@{k}@@", v)
+tmp = os.path.join(state_dir, "nginx.conf.tmp")
+with open(tmp, "w") as f:
+    f.write(conf)
+os.chmod(tmp, 0o644)
+os.replace(tmp, os.path.join(state_dir, "nginx.conf"))
+
+# variant files, rebuilt from scratch in a temp dir then swapped in
+variant = os.path.join(state_dir, "variant")
+tmpdir = variant + ".tmp"
+shutil.rmtree(tmpdir, ignore_errors=True)
+os.mkdir(tmpdir)
+for name in ("core-light.css", "core-dark.css", "core-system.css"):
+    shutil.copyfile(os.path.join(theme_src, name), os.path.join(tmpdir, name))
+
+with open(os.path.join(theme_src, "dark.css"), "rb") as f:
+    css_hash = hashlib.sha256(f.read()).hexdigest()[:12]
+conf_js = {
+    "default": default_theme,
+    "toggle": show_toggle,
+    # The shell's own stylesheet ships in this module's UI directory, which
+    # core serves; the query string busts the browser cache on updates.
+    "css": f"/cluster-admin/apps/{module_id}/theme/dark.css?v={css_hash}",
+}
+with open(os.path.join(theme_src, "loader.js")) as f:
+    loader = f.read()
+with open(os.path.join(tmpdir, "loader.js"), "w") as f:
+    f.write("\n;window.NS8_THEME_CONF = " + json.dumps(conf_js) + ";\n" + loader)
+
+for name in os.listdir(tmpdir):
+    os.chmod(os.path.join(tmpdir, name), 0o644)
+os.chmod(tmpdir, 0o755)
+shutil.rmtree(variant, ignore_errors=True)
+os.rename(tmpdir, variant)

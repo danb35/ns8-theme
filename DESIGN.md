@@ -403,15 +403,24 @@ to `core.css`. One build artifact, two delivery paths.
     in §3.4 has a caching angle (a cached good file masks a dead route).
 6. **Leader-only?** api-server runs on every node; is cluster-admin ever used
     via a worker node's address? If yes, install per node.
-7. **Module removal event ordering:** does the core `remove-module` path run
-    our `destroy-module` early enough that routes never point at a dead
-    service?
-8. **Calling Traefik from systemd hooks.** Module *actions* call
-    `agent.tasks.run(agent_id=agent.resolve_agent_id('traefik@node'), action='set-route', …)`
-    (kickstart's `configure-module` does). Running the same from
-    `ExecStartPost`/`ExecStopPost` needs the agent environment (Redis
-    credentials, `AGENT_ID`) outside an action; confirm that works, or fall back
-    to a watchdog action triggered by the unit.
+7. ~~**Module removal event ordering:**~~ **Answered, 2026-11-27**, on the
+   test node: `remove-module --no-preserve theme1` exited 0 and left no route
+   files, Traefik Redis keys, module user, home directory, UI directory,
+   listener or images. `core.css` and `config.production.js` were stock again
+   (byte-identical, even with the `dark` cookie), and cluster-admin loaded in
+   Chrome with no loader and no console errors. The leftover `ns8_theme`
+   cookie in the browser is harmless: nothing reads it once the module is gone.
+8. ~~**Calling Traefik from systemd hooks.**~~ **Answered yes, 2026-11-27**,
+   with the first module image on the test node (core 3.25.1).
+   `runagent manage-routes up|down` from `ExecStartPost`/`ExecStop`/`ExecStopPost`
+   adds and removes the routes; one call logged a WebSocket retry and then
+   succeeded. Measured: install starts the theme with no further step; a
+   clean stop removes the routes before nginx stops; killing nginx leaves
+   stock cluster-admin for about 10 s until systemd restarts it and the
+   routes return; `configure-module` takes about 10 s, mostly Traefik task
+   round trips. Route tasks are marked `isNotificationHidden` so they stay
+   out of the notification drawer, and a runtime marker stops the
+   `ExecStopPost` cleanup from repeating the `ExecStop` one.
 9. **ns8-ui-lib major versions in the wild:** the selector-based L3 layer
     assumes class names are stable across ui-lib 1.x and 2.x. Check which
     majors installed apps actually ship.

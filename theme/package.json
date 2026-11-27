@@ -1,0 +1,18 @@
+{
+  "name": "ns8-theme-css",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generates the ns8-theme dark override stylesheets from NS8's own SCSS sources",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@carbon/themes": "10.55.6",
+    "@nethserver/ns8-ui-lib": "2.2.2",
+    "carbon-components": "10.59.2",
+    "postcss": "8.4.49",
+    "sass": "1.83.0",
+    "tar": "7.4.3"
+  }
+}
