@@ -406,12 +406,17 @@ to `core.css`. One build artifact, two delivery paths.
 7. **Module removal event ordering:** does the core `remove-module` path run
     our `destroy-module` early enough that routes never point at a dead
     service?
-8. **Calling Traefik from systemd hooks.** Module *actions* call
-    `agent.tasks.run(agent_id=agent.resolve_agent_id('traefik@node'), action='set-route', …)`
-    (kickstart's `configure-module` does). Running the same from
-    `ExecStartPost`/`ExecStopPost` needs the agent environment (Redis
-    credentials, `AGENT_ID`) outside an action; confirm that works, or fall back
-    to a watchdog action triggered by the unit.
+8. ~~**Calling Traefik from systemd hooks.**~~ **Answered yes, 2026-11-27**,
+   with the first module image on the test node (core 3.25.1).
+   `runagent manage-routes up|down` from `ExecStartPost`/`ExecStop`/`ExecStopPost`
+   adds and removes the routes; one call logged a WebSocket retry and then
+   succeeded. Measured: install starts the theme with no further step; a
+   clean stop removes the routes before nginx stops; killing nginx leaves
+   stock cluster-admin for about 10 s until systemd restarts it and the
+   routes return; `configure-module` takes about 10 s, mostly Traefik task
+   round trips. Route tasks are marked `isNotificationHidden` so they stay
+   out of the notification drawer, and a runtime marker stops the
+   `ExecStopPost` cleanup from repeating the `ExecStop` one.
 9. **ns8-ui-lib major versions in the wild:** the selector-based L3 layer
     assumes class names are stable across ui-lib 1.x and 2.x. Check which
     majors installed apps actually ship.

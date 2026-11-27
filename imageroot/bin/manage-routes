@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-# manage-routes up|down
+# manage-routes up|down [--if-up]
 #
 # Add or remove the two Traefik routes that send cluster-admin's
 # config.production.js and core.css to this module's nginx. "up" waits for
@@ -29,6 +29,11 @@ ROUTES = {
     "cfg": "/cluster-admin/config/config.production.js",
     "css": "/cluster-admin/css/core.css",
 }
+
+# Runtime marker (tmpfs, gone after reboot): set while the routes are up, so
+# ExecStopPost can skip the removal ExecStop already did on a clean stop but
+# still clean up after a crash, when ExecStop does not run.
+MARKER = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/nonexistent"), "ns8-theme.routes")
 
 module_id = os.environ["MODULE_ID"]
 port = os.environ["TCP_PORT"]
@@ -70,10 +75,16 @@ def up():
             print(agent.SD_ERR + f"set-route {suffix} failed: {res}", file=sys.stderr)
             down()
             sys.exit(1)
+    try:
+        open(MARKER, "w").close()
+    except OSError:
+        pass
     print(f"Routes active for {', '.join(ROUTES.values())}", file=sys.stderr)
 
 
-def down():
+def down(if_up=False):
+    if if_up and not os.path.exists(MARKER) and os.path.isdir(os.path.dirname(MARKER)):
+        return
     for suffix in ROUTES:
         res = agent.tasks.run(
             agent_id=traefik,
@@ -83,6 +94,10 @@ def down():
         )
         if res["exit_code"] != 0:
             print(agent.SD_WARNING + f"delete-route {suffix}: {res.get('error') or res}", file=sys.stderr)
+    try:
+        os.unlink(MARKER)
+    except OSError:
+        pass
     print("Routes removed; cluster-admin is stock", file=sys.stderr)
 
 
@@ -91,7 +106,7 @@ if __name__ == "__main__":
     if cmd == "up":
         up()
     elif cmd == "down":
-        down()
+        down(if_up="--if-up" in sys.argv[2:])
     else:
-        print("usage: manage-routes up|down", file=sys.stderr)
+        print("usage: manage-routes up|down [--if-up]", file=sys.stderr)
         sys.exit(2)
