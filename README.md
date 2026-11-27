@@ -3,7 +3,7 @@
 Dark mode for the NethServer 8 cluster-admin web interface, as a standalone
 module. Nothing in ns8-core or in any app module is patched.
 
-> **Status:** first release, 0.1.0. Installed from the published image on a
+> **Status:** current release 0.1.3. Installed from the published image on a
 > test cluster (core 3.25.1) and listed in the danb35 software repository; the
 > QEMU CI suite tests install to removal on Rocky Linux 9 and Debian 13 on
 > every build.
