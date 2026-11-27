@@ -4,12 +4,11 @@
     "en": "Dark mode and theme switcher for the cluster-admin web interface"
   },
   "categories": [
-    "systemadministration"
+    "system_administration"
   ],
   "authors": [
     {
-      "name": "danb35",
-      "email": ""
+      "name": "Dan Brown"
     }
   ],
   "docs": {
