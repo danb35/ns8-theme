@@ -3,8 +3,10 @@
 Dark mode for the NethServer 8 cluster-admin web interface, as a standalone
 module. Nothing in ns8-core or in any app module is patched.
 
-> **Status:** early development, not released. It has been exercised on one
-> test cluster (core 3.25.1) but never installed from a published image yet.
+> **Status:** first release, 0.1.0. Installed from the published image on a
+> test cluster (core 3.25.1) and listed in the danb35 software repository; the
+> QEMU CI suite tests install to removal on Rocky Linux 9 and Debian 13 on
+> every build.
 
 - **Light, Dark, or follow the system setting**, chosen per browser with a
   button in the cluster-admin header.
@@ -41,9 +43,18 @@ checks, and the open questions.
 ## Install
 
 Install it on the **leader node**, the node whose address you use for
-cluster-admin:
+cluster-admin.
 
-    add-module ghcr.io/danb35/theme:latest 1
+From the Software Center: add the danb35 software repository once (in
+cluster-admin, **Settings → Software repositories → Add repository**, URL
+`https://danb35.github.io/ns8-repomd/`), then install **theme**. Or from a
+shell on the leader node, replacing `1` with the leader's node ID:
+
+    api-cli run add-repository --data '{"name":"danb35","url":"https://danb35.github.io/ns8-repomd/","status":true}'
+    add-module theme 1
+
+`add-module theme` installs the newest release from the repository; without the
+repository, use the image directly: `add-module ghcr.io/danb35/theme:latest 1`.
 
 The theme is active immediately, following each browser's system setting.
 Reload cluster-admin to see it.
