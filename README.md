@@ -82,6 +82,13 @@ stock.
 
 ## Troubleshooting
 
+**Not dark right after installing (or app pages stay light).** Browsers cache
+cluster-admin's stock files for a while. The theme replaces a cached stock
+`core.css` by itself the first time the shell loads, but a cached stock
+`config.production.js` it cannot reach: do one hard reload (Shift-Reload, or
+Cmd/Ctrl-Shift-R) of cluster-admin. Other browsers and computers are not
+affected.
+
 **cluster-admin won't load after installing.** Remove the two routes by hand
 from any node shell, then investigate (replace `traefik1` with the node's
 Traefik instance):

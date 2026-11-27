@@ -61,8 +61,35 @@
       system: '<path d="M16 4a12 12 0 1 0 12 12A12.014 12.014 0 0 0 16 4zm0 22V6a10 10 0 0 1 0 20z"/>'
     };
 
+    // A browser that loaded cluster-admin before the theme was installed (or
+    // updated) may hold the stock core.css in its HTTP cache: api-server sends
+    // it with only Last-Modified, so browsers reuse it for days without asking
+    // the server, and app pages stay light whatever the cookie says. Once per
+    // theme version, re-download core.css bypassing the cache: that replaces
+    // the cached copy with ours, which is "no-cache" without validators and so
+    // can't go stale again. Then reload any app page loaded meanwhile.
+    function refreshCoreCss() {
+      var key = "ns8-theme-core-css";
+      var version = NS.css || "";
+      try {
+        if (window.localStorage.getItem(key) === version) return;
+      } catch (e) {
+        return;
+      }
+      if (!window.fetch) return;
+      window
+        .fetch("/cluster-admin/css/core.css", { cache: "reload", credentials: "same-origin" })
+        .then(function (r) {
+          if (!r.ok) return;
+          try { window.localStorage.setItem(key, version); } catch (e) {}
+          reloadApps();
+        })
+        .catch(function () {});
+    }
+
     var mode = readMode();
     applyShell(mode);
+    refreshCoreCss();
 
     function makeButton() {
       var b = document.createElement("button");
