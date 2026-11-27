@@ -397,10 +397,19 @@ to `core.css`. One build artifact, two delivery paths.
    so body-level rules alone leave most of the page light. That is what L1/L2
    are for. Not tried in the browser: switching the cookie, because the Chrome
    extension can't read or set cookies; curl covered the cookie variants.
-5. **Browser caching of stock `core.css`:** gin sends `Last-Modified`; browsers
-    that cached it before install may keep serving it heuristically until
-    revalidation. Confirm one hard reload is enough, and whether the 502 risk
-    in §3.4 has a caching angle (a cached good file masks a dead route).
+5. ~~**Browser caching of stock `core.css`:**~~ **Answered, 2026-11-27: it
+   bites.** api-server sends stock files with only `Last-Modified`, so a
+   browser that used cluster-admin before the theme was installed reuses its
+   cached stock `core.css` for days (heuristic freshness, about 10% of the
+   file's age) without asking the server: app pages stay light whatever the
+   cookie says. Seen on a production cluster, reproduced on the test node
+   (iframe `core.css` read from cache, 0 bytes transferred). Fixed in the
+   loader: once per theme version it re-downloads `core.css` with
+   `cache: "reload"`, which replaces the cached copy with ours ("no-cache", no
+   validators, so it can't go stale), then reloads the app frame. A stale
+   stock `config.production.js` would keep the loader itself from running;
+   the server cannot reach that cache entry, so the README tells users to hard
+   reload once if the theme doesn't appear right after install.
 6. **Leader-only?** api-server runs on every node; is cluster-admin ever used
     via a worker node's address? If yes, install per node.
 7. ~~**Module removal event ordering:**~~ **Answered, 2026-11-27**, on the

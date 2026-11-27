@@ -3,7 +3,7 @@
 Dark mode for the NethServer 8 cluster-admin web interface, as a standalone
 module. Nothing in ns8-core or in any app module is patched.
 
-> **Status:** first release, 0.1.0. Installed from the published image on a
+> **Status:** current release 0.1.3. Installed from the published image on a
 > test cluster (core 3.25.1) and listed in the danb35 software repository; the
 > QEMU CI suite tests install to removal on Rocky Linux 9 and Debian 13 on
 > every build.
@@ -81,6 +81,13 @@ Removing the module also removes its routes, so cluster-admin goes back to
 stock.
 
 ## Troubleshooting
+
+**Not dark right after installing (or app pages stay light).** Browsers cache
+cluster-admin's stock files for a while. The theme replaces a cached stock
+`core.css` by itself the first time the shell loads, but a cached stock
+`config.production.js` it cannot reach: do one hard reload (Shift-Reload, or
+Cmd/Ctrl-Shift-R) of cluster-admin. Other browsers and computers are not
+affected.
 
 **cluster-admin won't load after installing.** Remove the two routes by hand
 from any node shell, then investigate (replace `traefik1` with the node's
