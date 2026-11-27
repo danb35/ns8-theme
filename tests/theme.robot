@@ -1,5 +1,6 @@
 *** Settings ***
 Library    SSHLibrary
+Library    String
 
 *** Variables ***
 ${module_id}    ${EMPTY}
@@ -8,6 +9,10 @@ ${ADMIN_USER}    admin
 ${ADMIN_PASSWORD}    Nethesis,1234
 ${SHOTS}        ${OUTPUT DIR}/browser/screenshot
 ${DARK_BG}      rgb(22, 22, 22)
+# Highest share of dark.css class names allowed to be missing from the live
+# core.css before we call the theme stale (about 6% with core 3.25.1, mostly
+# ns8-ui-lib classes that ship inside each app instead).
+${MAX_MISSING_PCT}    15
 
 *** Keywords ***
 Get core.css size with cookie
@@ -53,6 +58,16 @@ Record the stock core.css size
     ${stock} =    Execute Command    curl -sk -o /dev/null -w '\%{size_download}' ${URL}/css/core.css
     Set Global Variable    ${stock_size}    ${stock}
 
+Core still loads config.production.js by that name
+    [Documentation]    The loader rides on this unhashed script (DESIGN.md 3.3).
+    ${n} =    Execute Command    curl -sk ${URL}/ | grep -c 'src="config/config.production.js"'
+    Should Be True    ${n} >= 1    index.html no longer loads config/config.production.js
+
+Core's cluster-admin route is below our priority
+    [Documentation]    Our routes win only while core's stay below 100100.
+    ${p} =    Execute Command    grep -h 'priority:' /home/traefik*/.config/state/configs/cluster-admin.yml | awk '{print $2}' | sort -n | tail -1
+    Should Be True    0 < ${p} < 100100    core's cluster-admin route priority is ${p}
+
 Install the module
     ${output}  ${rc} =    Execute Command    add-module ${IMAGE_URL} 1
     ...    return_rc=True
@@ -79,6 +94,36 @@ core.css variants follow the cookie
     Should Be True    ${dark} > ${stock_size}
     ${system} =    Execute Command    curl -sk ${URL}/css/core.css | tail -c 200000 | grep -c 'prefers-color-scheme: dark'
     Should Be True    ${system} >= 1
+
+Responses are compressed, uncached and vary by cookie
+    ${h} =    Execute Command    curl -sk -D - -o /dev/null -H 'Accept-Encoding: gzip' -b ns8_theme=dark ${URL}/css/core.css
+    Should Match Regexp    ${h}    (?i)content-encoding: gzip
+    Should Match Regexp    ${h}    (?i)cache-control: no-cache
+    Should Match Regexp    ${h}    (?i)vary: [^\n]*cookie
+    ${h} =    Execute Command    curl -sk -D - -o /dev/null ${URL}/config/config.production.js
+    Should Match Regexp    ${h}    (?i)cache-control: no-cache
+    ${r} =    Execute Command    curl -s -o /dev/null -w '\%{http_code} \%{redirect_url}' http://127.0.0.1/cluster-admin/config/config.production.js
+    Should Match Regexp    ${r}    ^30[18] https://
+
+The dark stylesheet still matches the core UI
+    [Documentation]    Warns when a core UI release renames the classes the
+    ...    generated theme targets (dark.css is built from a fixed core release).
+    Put File    ${CURDIR}/scripts/class-coverage.sh    /tmp/class-coverage.sh    mode=0755
+    ${out} =    Execute Command    /tmp/class-coverage.sh ${module_id}
+    Execute Command    rm -f /tmp/class-coverage.sh
+    @{lines} =    Split To Lines    ${out}
+    @{counts} =    Split String    ${lines}[0]
+    ${missing} =    Convert To Integer    ${counts}[0]
+    ${total} =    Convert To Integer    ${counts}[1]
+    ${pct} =    Evaluate    round(100 * ${missing} / ${total}, 1)
+    Log    ${missing} of ${total} class names (${pct}%) are not in the live core.css: ${lines}[1:]    console=True
+    Should Be True    ${total} > 100    dark.css looks empty
+    Should Be True    ${pct} < ${MAX_MISSING_PCT}    ${pct}% of dark.css class names no longer exist in core.css: rebuild against the current core
+
+Every app UI links the shared core.css
+    [Documentation]    The theme reaches app pages only through this link.
+    ${out} =    Execute Command    for f in /var/lib/nethserver/cluster/ui/apps/*/index.html; do grep -q '/cluster-admin/css/core.css' "$f" || echo "$f"; done
+    Should Be Empty    ${out}    these app UIs do not link /cluster-admin/css/core.css: ${out}
 
 Dark theme in the browser
     [Documentation]    Default "system" theme with the OS in dark mode: shell and
@@ -130,6 +175,13 @@ Header button switches the theme
     Take Screenshot    filename=${SHOTS}/9._Dark_by_button_with_OS_in_light_mode.png
     Close Browser
 
+Invalid settings are rejected
+    ${out}  ${rc} =    Execute Command    api-cli run module/${module_id}/configure-module --data '{"default_theme": "purple"}'
+    ...    return_rc=True
+    Should Not Be Equal As Integers    ${rc}    0
+    ${cfg} =    Execute Command    api-cli run module/${module_id}/get-configuration
+    Should Contain    ${cfg}    "default_theme": "system"
+
 Configure the default theme
     ${out}  ${rc} =    Execute Command    api-cli run module/${module_id}/configure-module --data '{"default_theme": "dark", "show_toggle": false}'
     ...    return_rc=True
@@ -141,11 +193,33 @@ Configure the default theme
     ${cfg} =    Execute Command    api-cli run module/${module_id}/get-configuration
     Should Contain    ${cfg}    "default_theme": "dark"
 
+A second instance on the same node is refused
+    [Documentation]    max-per-node=1: two instances would fight over the routes.
+    ${out}  ${rc} =    Execute Command    add-module ${IMAGE_URL} 1
+    ...    return_rc=True
+    IF    ${rc} == 0
+        &{extra} =    Evaluate    ${out}
+        Execute Command    remove-module --no-preserve ${extra.module_id}
+    END
+    Should Not Be Equal As Integers    ${rc}    0    a second instance was installed on the same node
+
+A crashed nginx is replaced and the routes come back
+    [Documentation]    The routes must disappear while nginx is down (stock
+    ...    cluster-admin), and return once systemd restarts it.
+    Execute Command    runagent -m ${module_id} podman kill theme
+    Wait Until Keyword Succeeds    30s    1s    Routes count should be    0
+    Wait Until Keyword Succeeds    90s    3s    Routes count should be    2
+    ${rc} =    Execute Command    runagent -m ${module_id} systemctl --user is-active theme.service
+    ...    return_stdout=False    return_rc=True
+    Should Be Equal As Integers    ${rc}    0
+
 Stopping the service restores the stock files
     Execute Command    runagent -m ${module_id} systemctl --user stop theme.service
     Wait Until Keyword Succeeds    60s    3s    Routes count should be    0
     ${size} =    Get core.css size with cookie    dark
     Should Be Equal    ${size}    ${stock_size}
+    ${cfg} =    Execute Command    api-cli run module/${module_id}/get-configuration
+    Should Contain    ${cfg}    "service_active": false
     Execute Command    runagent -m ${module_id} systemctl --user start theme.service
     Wait Until Keyword Succeeds    60s    3s    Routes count should be    2
 
