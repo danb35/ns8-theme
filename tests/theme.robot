@@ -149,7 +149,7 @@ Dark theme in the browser
     ${bgs} =    Evaluate JavaScript    ${None}
     ...    () => ['warning', 'error', 'success', 'info'].map((k) => {
     ...        const n = document.createElement('div');
-    ...        n.className = `bx--inline-notification bx--inline-notification--${k} bx--inline-notification--low-contrast`;
+    ...        n.className = 'bx--inline-notification bx--inline-notification--' + k + ' bx--inline-notification--low-contrast';
     ...        document.body.appendChild(n);
     ...        const bg = getComputedStyle(n).backgroundColor;
     ...        n.remove();
