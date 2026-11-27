@@ -6,7 +6,10 @@ on:
       - '**/validate-input.json'
       - '**/validate-output.json'
       - '**/validator-definitions.json'
+      - '.github/workflows/build-apidoc.yml'
 
 jobs:
   build-apidoc:
+    permissions:
+      contents: write
     uses: NethServer/ns8-github-actions/.github/workflows/build-apidoc.yml@v1
