@@ -159,6 +159,24 @@ Dark theme in the browser
         Should Be Equal    ${bg}    rgb(38, 38, 38)    low-contrast notification background is ${bg}
     END
     Shot    software-center    h2 >> text="Software center"    2._Dark_-_software_center
+    # The Software Center tabs were gray on gray in 0.1.1: an unselected tab
+    # must stay readable (WCAG AA, 4.5:1) once the tabs are enabled.
+    Wait For Elements State    css=.bx--content-switcher-btn:not(.bx--content-switcher--selected) >> nth=0    enabled    timeout=20s
+    ${ratio} =    Evaluate JavaScript    ${None}
+    ...    () => {
+    ...        const lum = (c) => {
+    ...            const v = c.match(/\\d+/g).slice(0, 3).map((x) => x / 255)
+    ...                .map((x) => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)));
+    ...            return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    ...        };
+    ...        const b = document.querySelector('.bx--content-switcher-btn:not(.bx--content-switcher--selected)');
+    ...        const s = getComputedStyle(b);
+    ...        let bg = s.backgroundColor;
+    ...        if (bg === 'rgba(0, 0, 0, 0)') bg = getComputedStyle(document.body).backgroundColor;
+    ...        const x = lum(s.color), y = lum(bg);
+    ...        return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    ...    }
+    Should Be True    ${ratio} >= 4.5    unselected Software Center tab contrast is ${ratio}:1
     Shot    nodes    h2 >> text="Nodes"    3._Dark_-_nodes
     Shot    settings    h2 >> text="Settings"    4._Dark_-_settings
     Shot    apps/${module_id}?page=status    iframe >>> h2 >> text="Status"    5._Dark_-_app_status
