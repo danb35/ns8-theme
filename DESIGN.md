@@ -403,9 +403,13 @@ to `core.css`. One build artifact, two delivery paths.
     in §3.4 has a caching angle (a cached good file masks a dead route).
 6. **Leader-only?** api-server runs on every node; is cluster-admin ever used
     via a worker node's address? If yes, install per node.
-7. **Module removal event ordering:** does the core `remove-module` path run
-    our `destroy-module` early enough that routes never point at a dead
-    service?
+7. ~~**Module removal event ordering:**~~ **Answered, 2026-11-27**, on the
+   test node: `remove-module --no-preserve theme1` exited 0 and left no route
+   files, Traefik Redis keys, module user, home directory, UI directory,
+   listener or images. `core.css` and `config.production.js` were stock again
+   (byte-identical, even with the `dark` cookie), and cluster-admin loaded in
+   Chrome with no loader and no console errors. The leftover `ns8_theme`
+   cookie in the browser is harmless: nothing reads it once the module is gone.
 8. ~~**Calling Traefik from systemd hooks.**~~ **Answered yes, 2026-11-27**,
    with the first module image on the test node (core 3.25.1).
    `runagent manage-routes up|down` from `ExecStartPost`/`ExecStop`/`ExecStopPost`
