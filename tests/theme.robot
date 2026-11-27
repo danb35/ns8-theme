@@ -21,13 +21,21 @@ Get core.css size with cookie
     RETURN    ${size}
 
 Routes count
-    ${n} =    Execute Command    ls /home/traefik*/.config/state/configs/ | grep -c '^${module_id}-'
+    ${files} =    Execute Command    ls /home/traefik*/.config/state/configs/ | grep -E '^${module_id}-(cfg|css)\\.yml$' || true
+    Log    route files: ${files}
+    @{lines} =    Split To Lines    ${files}
+    ${n} =    Get Length    ${lines}
     RETURN    ${n}
 
 Routes count should be
     [Arguments]    ${expected}
     ${n} =    Routes count
     Should Be Equal As Integers    ${n}    ${expected}
+
+Service should be active
+    ${rc} =    Execute Command    runagent -m ${module_id} systemctl --user is-active theme.service
+    ...    return_stdout=False    return_rc=True
+    Should Be Equal As Integers    ${rc}    0
 
 Open cluster-admin
     [Documentation]    New browser context with the OS color scheme set, logged in.
@@ -77,9 +85,7 @@ Install the module
 
 The service starts and adds both routes
     Wait Until Keyword Succeeds    60s    3s    Routes count should be    2
-    ${rc} =    Execute Command    runagent -m ${module_id} systemctl --user is-active theme.service
-    ...    return_stdout=False    return_rc=True
-    Should Be Equal As Integers    ${rc}  0
+    Wait Until Keyword Succeeds    30s    2s    Service should be active
 
 config.production.js still defines CONFIG and carries the loader
     ${js} =    Execute Command    curl -sk ${URL}/config/config.production.js
@@ -121,8 +127,10 @@ The dark stylesheet still matches the core UI
     Should Be True    ${pct} < ${MAX_MISSING_PCT}    ${pct}% of dark.css class names no longer exist in core.css: rebuild against the current core
 
 Every app UI links the shared core.css
-    [Documentation]    The theme reaches app pages only through this link.
-    ${out} =    Execute Command    for f in /var/lib/nethserver/cluster/ui/apps/*/index.html; do grep -q '/cluster-admin/css/core.css' "$f" || echo "$f"; done
+    [Documentation]    The theme reaches app pages only through this link. Only
+    ...    real module UIs (id="ns8-app") count: some core modules ship a
+    ...    placeholder or redirect page instead.
+    ${out} =    Execute Command    for f in /var/lib/nethserver/cluster/ui/apps/*/index.html; do grep -q 'id="ns8-app"' "$f" || continue; grep -q '/cluster-admin/css/core.css' "$f" || echo "$f"; done
     Should Be Empty    ${out}    these app UIs do not link /cluster-admin/css/core.css: ${out}
 
 Dark theme in the browser
@@ -194,14 +202,18 @@ Configure the default theme
     Should Contain    ${cfg}    "default_theme": "dark"
 
 A second instance on the same node is refused
-    [Documentation]    max-per-node=1: two instances would fight over the routes.
+    [Documentation]    Two instances would fight over the routes. The image's
+    ...    max-per-node label binds only the Software Center, so create-module
+    ...    checks too. core leaves the refused instance registered: remove it.
     ${out}  ${rc} =    Execute Command    add-module ${IMAGE_URL} 1
     ...    return_rc=True
-    IF    ${rc} == 0
-        &{extra} =    Evaluate    ${out}
-        Execute Command    remove-module --no-preserve ${extra.module_id}
+    ${extra} =    Execute Command    redis-cli hkeys cluster/module_node | grep -E '^theme[0-9]+$' | grep -vx '${module_id}' || true
+    @{extras} =    Split To Lines    ${extra}
+    FOR    ${m}    IN    @{extras}
+        Execute Command    remove-module --no-preserve ${m}
     END
     Should Not Be Equal As Integers    ${rc}    0    a second instance was installed on the same node
+    Routes count should be    2
 
 A crashed nginx is replaced and the routes come back
     [Documentation]    The routes must disappear while nginx is down (stock
@@ -209,9 +221,8 @@ A crashed nginx is replaced and the routes come back
     Execute Command    runagent -m ${module_id} podman kill theme
     Wait Until Keyword Succeeds    30s    1s    Routes count should be    0
     Wait Until Keyword Succeeds    90s    3s    Routes count should be    2
-    ${rc} =    Execute Command    runagent -m ${module_id} systemctl --user is-active theme.service
-    ...    return_stdout=False    return_rc=True
-    Should Be Equal As Integers    ${rc}    0
+    # The second route appears while ExecStartPost is still finishing.
+    Wait Until Keyword Succeeds    30s    2s    Service should be active
 
 Stopping the service restores the stock files
     Execute Command    runagent -m ${module_id} systemctl --user stop theme.service
