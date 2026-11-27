@@ -49,7 +49,10 @@
     "gray": (#393939, #e0e0e0),
     "cool-gray": (#343a3f, #dde1e6),
     "warm-gray": (#3c3838, #e5e0df),
-    "high-contrast": (#f4f4f4, #161616),
+    // Stock is a white chip; in dark mode that glares ("Disabled",
+    // "Inactive"). One step lighter than plain gray tags, so it still
+    // shows on layer-2 tiles. 7.1:1.
+    "high-contrast": (#525252, #f4f4f4),
   );
   @each $name, $c in $tags {
     .bx--tag--#{$name} {
